@@ -62,8 +62,13 @@ export function makeWeek(site: Site, seed: number, days = 7): Step[] {
   return steps;
 }
 
-/** What the planner "knows" ahead of time: the real values plus forecast error. Used in step 4. */
+/** What the planner "knows" ahead of time: the real values plus forecast error. */
 export function forecast(steps: Step[], seed: number): Step[] {
   const r = rng(seed ^ 0x9e3779b9);
-  return steps.map((s) => ({ ...s, pvKw: s.pvKw * (0.8 + 0.4 * r()), otherKw: s.otherKw * (0.8 + 0.4 * r()) }));
+  // grid timing: each day's pattern is known, but outage edges are off by up to an hour either way
+  const shift = Array.from({ length: Math.ceil(steps.length / 96) }, () => Math.round((r() * 2 - 1) * 4));
+  return steps.map((s, k) => {
+    const j = Math.min(steps.length - 1, Math.max(0, k + shift[Math.floor(k / 96)]));
+    return { ...s, pvKw: s.pvKw * (0.8 + 0.4 * r()), otherKw: s.otherKw * (0.8 + 0.4 * r()), gridOn: steps[j].gridOn };
+  });
 }
