@@ -1,7 +1,12 @@
-import highsLoader from "highs";
+import highsLoader, { type Highs } from "highs";
 import type { Command, Site, State, Step } from "../../sim/src/types.ts";
 
-const highs = await highsLoader();
+let highs: Highs | null = null;
+
+/** Load the HiGHS solver once. In the browser, pass where the .wasm file lives: { locateFile: () => wasmUrl }. */
+export async function initPlanner(options?: Parameters<typeof highsLoader>[0]) {
+  highs ??= await highsLoader(options);
+}
 
 /** What each bad outcome "costs" the planner, in litres of fuel, so the same numbers work in any currency. */
 const COST = {
@@ -35,7 +40,16 @@ export function toHourly(steps: Step[]): Step[] {
  * Per hour k the solver chooses: battery charge c, discharge d, generator output gen and on/off u,
  * grid import r, curtailed solar v, shed load s, unmet critical load e, and battery energy E at the end of the hour.
  */
-export function plan(site: Site, state: State, hours: Step[]): Command {
+
+/** One hour of a plan, for showing on screen. */
+export interface PlannedHour {
+  socPct: number; // battery at the end of the hour
+  genKw: number;
+  gridKw: number;
+  shedKw: number;
+}
+
+export function plan(site: Site, state: State, hours: Step[]): Command & { schedule: PlannedHour[] } {
   const N = hours.length;
   const b = site.battery;
   const g = site.generator;
@@ -112,12 +126,16 @@ export function plan(site: Site, state: State, hours: Step[]): Command {
     "End",
   ].join("\n");
 
+    if (!highs) throw new Error("planner: call initPlanner() first");
   const res = highs.solve(lp, { time_limit: 5, mip_rel_gap: 0.01 });
   if (res.Status !== "Optimal" && res.Status !== "Time limit reached") throw new Error(`planner: ${res.Status}`);
 
   const x = (name: string) => res.Columns[name]?.Primal ?? 0;
-  return {
-    genKw: g && x("u0") > 0.5 ? x("gen0") : 0,
-    shedKw: x("s0") > 1e-6 ? x("s0") : 0,
-  };
+    const schedule = hours.map((_, k) => ({
+    socPct: (100 * x(`E${k}`)) / b.capacityKwh,
+    genKw: x(`u${k}`) > 0.5 ? x(`gen${k}`) : 0,
+    gridKw: x(`r${k}`),
+    shedKw: x(`s${k}`),
+  }));
+  return { genKw: schedule[0].genKw, shedKw: schedule[0].shedKw > 1e-6 ? schedule[0].shedKw : 0, schedule };
 }

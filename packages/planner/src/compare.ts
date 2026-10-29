@@ -2,7 +2,9 @@ import { baseline } from "../../sim/src/baseline.ts";
 import { stepPlant } from "../../sim/src/plant.ts";
 import { forecast, lagosClinic, makeWeek, palawanVillage } from "../../sim/src/scenarios.ts";
 import { DT, STEPS_PER_DAY, type Command, type Log, type Site, type State, type Step } from "../../sim/src/types.ts";
-import { plan, toHourly } from "./planner.ts";
+import { initPlanner, plan, toHourly } from "./planner.ts";
+
+await initPlanner();
 
 type Policy = (state: State, step: Step, k: number) => Command;
 
