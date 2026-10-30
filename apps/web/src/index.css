@@ -1,1 +1,55 @@
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/instrument-sans";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "@fontsource/ibm-plex-mono/400.css";
+@import "@fontsource/ibm-plex-mono/500.css";
 @import "tailwindcss";
+
+/* KEEPLIT design tokens: use as bg-ink, text-accent, border-line, font-display, ... */
+@theme {
+  --color-ink: #0a0c10;
+  --color-panel: #11141a;
+  --color-line: #1e232c;
+  --color-line-strong: #2a303b;
+  --color-text: #edeff2;
+  --color-muted: #b4bbc6;
+  --color-faint: #8a93a3;
+  --color-accent: #ffc94d;
+  --color-good: #3ddc97;
+  --color-warn: #ff8a3d;
+  --color-bad: #ff4d5e;
+  --color-gen: #b07cff;
+  --color-grid: #4fa3ff;
+  --color-batt: #6b7385;
+
+  --font-display: "Bricolage Grotesque Variable", system-ui, sans-serif;
+  --font-sans: "Instrument Sans Variable", system-ui, sans-serif;
+  --font-serif: "Instrument Serif", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* The engineering grid behind every screen */
+body {
+  margin: 0;
+  color: var(--color-text);
+  background-color: var(--color-ink);
+  background-image:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 32px),
+    repeating-linear-gradient(90deg, rgb(255 255 255 / 0.035) 0 1px, transparent 1px 32px);
+  font-family: var(--font-sans);
+}
+
+@keyframes flow {
+  to {
+    stroke-dashoffset: -24;
+  }
+}
+.flow {
+  stroke-dasharray: 6 6;
+  animation: flow 1.2s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .flow {
+    animation: none;
+  }
+}
