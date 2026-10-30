@@ -39,8 +39,10 @@ export function useSiteWeek(site: Site, seed = 1) {
   const [snap, setSnap] = useState<Snapshot | null>(null);
   const [playing, setPlaying] = useState(true);
   const [error, setError] = useState("");
-  const playingRef = useRef(playing);
-  playingRef.current = playing;
+    const playingRef = useRef(playing);
+  useEffect(() => {
+    playingRef.current = playing;
+  }, [playing]);
 
   useEffect(() => {
     const week = makeWeek(site, seed, 8); // 8 days, so the last day can still look 24 h ahead
