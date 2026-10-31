@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { lagosClinic } from "../../../packages/sim/src/scenarios.ts";
+import { AskScreen } from "./AskScreen.tsx";
 import { Live, Plan } from "./screens.tsx";
 import { clock, useSiteWeek } from "./useSiteWeek.ts";
 
-type Tab = "live" | "plan";
+type Tab = "live" | "plan" | "ask";
 
 export default function App() {
   const { snap, playing, setPlaying, error } = useSiteWeek(lagosClinic);
@@ -34,18 +35,17 @@ export default function App() {
       {!snap && !error && (
         <p className="text-faint mt-10">Planning the first hour…</p>
       )}
-      {snap &&
-        (tab === "live" ? (
-          <Live s={snap} onPlan={() => setTab("plan")} />
-        ) : (
-          <Plan s={snap} />
-        ))}
+      {snap && tab === "live" && (
+        <Live s={snap} onPlan={() => setTab("plan")} />
+      )}
+      {snap && tab === "plan" && <Plan s={snap} />}
+      {snap && tab === "ask" && <AskScreen site={lagosClinic} s={snap} />}
 
       <nav
         aria-label="App"
         className="fixed inset-x-3 bottom-3 mx-auto max-w-md flex gap-1 border border-line bg-panel/95 p-1.5"
       >
-        {(["live", "plan"] as const).map((t) => (
+        {(["live", "plan", "ask"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -55,13 +55,6 @@ export default function App() {
             {t}
           </button>
         ))}
-        <button
-          disabled
-          className="flex-1 h-12 text-sm text-line-strong"
-          title="Coming soon"
-        >
-          Ask
-        </button>
       </nav>
     </div>
   );
