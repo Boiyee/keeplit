@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { lagosClinic } from "../../../packages/sim/src/scenarios.ts";
 import { AskScreen } from "./AskScreen.tsx";
+import { CompareScreen } from "./CompareScreen.tsx";
 import { Live, Plan } from "./screens.tsx";
 import { clock, useSiteWeek } from "./useSiteWeek.ts";
 
-type Tab = "live" | "plan" | "ask";
+type Tab = "live" | "plan" | "ask" | "compare";
 
 export default function App() {
   const { snap, playing, setPlaying, error } = useSiteWeek(lagosClinic);
@@ -40,12 +41,15 @@ export default function App() {
       )}
       {snap && tab === "plan" && <Plan s={snap} />}
       {snap && tab === "ask" && <AskScreen site={lagosClinic} s={snap} />}
+      {snap && tab === "compare" && (
+        <CompareScreen site={lagosClinic} s={snap} />
+      )}
 
       <nav
         aria-label="App"
         className="fixed inset-x-3 bottom-3 mx-auto max-w-md flex gap-1 border border-line bg-panel/95 p-1.5"
       >
-        {(["live", "plan", "ask"] as const).map((t) => (
+        {(["live", "plan", "ask", "compare"] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}

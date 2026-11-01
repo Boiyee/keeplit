@@ -1,3 +1,4 @@
+import { writeFileSync } from "node:fs";
 import { baseline } from "../../sim/src/baseline.ts";
 import { stepPlant } from "../../sim/src/plant.ts";
 import { forecast, lagosClinic, makeWeek, palawanVillage } from "../../sim/src/scenarios.ts";
@@ -7,6 +8,7 @@ import { initPlanner, plan, toHourly } from "./planner.ts";
 await initPlanner();
 
 type Policy = (state: State, step: Step, k: number) => Command;
+const METRICS = ["fuelL", "genHours", "fridgeDownMin", "batteryCycles", "hoursBelow20", "shedKwh"] as const;
 
 function simulate(site: Site, steps: Step[], policy: Policy) {
   let state: State = { socKwh: 0.6 * site.battery.capacityKwh, genOn: false };
@@ -27,11 +29,9 @@ function simulate(site: Site, steps: Step[], policy: Policy) {
   ];
 }
 
-const sites = process.argv[3] === "palawan" ? [palawanVillage] : [lagosClinic];
-const seeds = Number(process.argv[2] ?? 1);
-
-for (const site of sites) {
-  const totals = { base: [0, 0, 0, 0, 0, 0], keep: [0, 0, 0, 0, 0, 0] };
+/** Average of `seeds` simulated weeks: old inverter rules vs KEEPLIT re-planning every hour. */
+function compare(site: Site, seeds: number) {
+  const totals = { base: METRICS.map(() => 0), keep: METRICS.map(() => 0) };
   for (let seed = 1; seed <= seeds; seed++) {
     const week = makeWeek(site, seed, 8); // 8 days, so the last day still has 24 h to look ahead
     const fcHours = toHourly(forecast(week, seed));
@@ -49,8 +49,19 @@ for (const site of sites) {
     base.forEach((v, i) => (totals.base[i] += v / seeds));
     keep.forEach((v, i) => (totals.keep[i] += v / seeds));
   }
-  console.log(`${site.name} · average of ${seeds} week(s)`);
-  ["fuel L", "generator h", "fridge down min", "battery cycles", "hours below 20%", "shed kWh"].forEach((name, i) =>
-    console.log(`  ${name.padEnd(16)} old rules ${totals.base[i].toFixed(1).padStart(5)}   keeplit ${totals.keep[i].toFixed(1).padStart(5)}`),
-  );
+  const pick = (v: number[]) => Object.fromEntries(METRICS.map((m, i) => [m, Number(v[i].toFixed(2))]));
+  return { site: site.name, weeks: seeds, oldRules: pick(totals.base), keeplit: pick(totals.keep) };
+}
+
+// npx tsx packages/planner/src/compare.ts [weeks] [--save]
+const seeds = Number(process.argv[2] ?? 1);
+const results = [lagosClinic, palawanVillage].map((site) => compare(site, seeds));
+
+for (const r of results) {
+  console.log(`${r.site} · average of ${r.weeks} week(s)`);
+  for (const m of METRICS) console.log(`  ${m.padEnd(14)} old rules ${r.oldRules[m].toFixed(1).padStart(5)}   keeplit ${r.keeplit[m].toFixed(1).padStart(5)}`);
+}
+if (process.argv.includes("--save")) {
+  writeFileSync(new URL("../../../apps/web/src/results.json", import.meta.url), JSON.stringify(results, null, 2) + "\n");
+  console.log("saved apps/web/src/results.json");
 }

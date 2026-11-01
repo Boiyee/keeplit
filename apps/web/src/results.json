@@ -1,0 +1,42 @@
+[
+  {
+    "site": "Lagos clinic",
+    "weeks": 5,
+    "oldRules": {
+      "fuelL": 14.56,
+      "genHours": 9.1,
+      "fridgeDownMin": 0,
+      "batteryCycles": 6.46,
+      "hoursBelow20": 1.35,
+      "shedKwh": 0
+    },
+    "keeplit": {
+      "fuelL": 9.27,
+      "genHours": 6.8,
+      "fridgeDownMin": 0,
+      "batteryCycles": 6.35,
+      "hoursBelow20": 0.65,
+      "shedKwh": 0.64
+    }
+  },
+  {
+    "site": "Palawan village",
+    "weeks": 5,
+    "oldRules": {
+      "fuelL": 21.32,
+      "genHours": 18.7,
+      "fridgeDownMin": 0,
+      "batteryCycles": 7.43,
+      "hoursBelow20": 2.55,
+      "shedKwh": 0
+    },
+    "keeplit": {
+      "fuelL": 21.85,
+      "genHours": 19.6,
+      "fridgeDownMin": 0,
+      "batteryCycles": 7.13,
+      "hoursBelow20": 2.85,
+      "shedKwh": 0.01
+    }
+  }
+]

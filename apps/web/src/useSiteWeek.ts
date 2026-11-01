@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import type { PlannedHour } from "../../../packages/planner/src/planner.ts";
 import { toHourly } from "../../../packages/planner/src/planner.ts";
+import { baseline } from "../../../packages/sim/src/baseline.ts";
 import { stepPlant } from "../../../packages/sim/src/plant.ts";
 import { forecast, makeWeek } from "../../../packages/sim/src/scenarios.ts";
-import type { Command, Site, State, Step } from "../../../packages/sim/src/types.ts";
+import { DT, type Command, type Site, type State, type Step } from "../../../packages/sim/src/types.ts";
 import type { PlanRequest } from "./planner.worker.ts";
 
 const WEEK_HOURS = 7 * 24;
@@ -19,6 +20,8 @@ export interface Snapshot {
   schedule: PlannedHour[]; // the fresh plan: entry i covers hour + i
   ahead: Step[]; // the forecast that plan was made from
   solveMs: number;
+  fridgeDownMin: number; // minutes the fridge lost power so far
+  old: { fuelL: number; fridgeDownMin: number; socPct: number }; // the same week under the old inverter rules
 }
 
 /** Ask the planner worker for a plan, and wait for the answer. */
@@ -50,6 +53,10 @@ export function useSiteWeek(site: Site, seed = 1) {
     const solver = makeSolver();
     let state: State = { socKwh: 0.6 * site.battery.capacityKwh, genOn: false };
     let fuelL = 0;
+    let fridgeDownMin = 0;
+    // A twin of the site running the old inverter rules on the exact same week, for the Compare tab.
+    let oldState: State = { ...state };
+    const old = { fuelL: 0, fridgeDownMin: 0 };
     let hour = 0;
     let stopped = false;
 
@@ -76,11 +83,20 @@ export function useSiteWeek(site: Site, seed = 1) {
           schedule: result.schedule,
           ahead,
           solveMs,
+          fridgeDownMin,
+          old: { ...old, socPct: (100 * oldState.socKwh) / site.battery.capacityKwh },
         });
         for (let q = 0; q < 4; q++) {
           const { next, log } = stepPlant(site, state, week[hour * 4 + q], result);
           state = next;
           fuelL += log.fuelL;
+          if (log.criticalUnmetKwh > 1e-6) fridgeDownMin += DT * 60;
+
+          const step = week[hour * 4 + q];
+          const o = stepPlant(site, oldState, step, baseline(site, oldState, step));
+          oldState = o.next;
+          old.fuelL += o.log.fuelL;
+          if (o.log.criticalUnmetKwh > 1e-6) old.fridgeDownMin += DT * 60;
         }
         hour++;
         await new Promise((r) => setTimeout(r, Math.max(0, MS_PER_HOUR - (performance.now() - t0))));
