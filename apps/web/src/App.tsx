@@ -8,7 +8,7 @@ import { clock, useSiteWeek } from "./useSiteWeek.ts";
 type Tab = "live" | "plan" | "ask" | "compare";
 
 export default function App() {
-  const { snap, playing, setPlaying, error, useReading } = useSiteWeek(lagosClinic);
+  const { snap, playing, setPlaying, error, applyReading } = useSiteWeek(lagosClinic);
   const [tab, setTab] = useState<Tab>("live");
 
   return (
@@ -41,7 +41,7 @@ export default function App() {
           s={snap}
           onPlan={() => setTab("plan")}
           site={lagosClinic}
-          onUseReading={useReading}
+          onUseReading={applyReading}
         />
       )}
       {snap && tab === "plan" && <Plan s={snap} />}

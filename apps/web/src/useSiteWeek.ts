@@ -75,6 +75,8 @@ export function useSiteWeek(site: Site, seed = 1) {
         pendingSocRef.current = null;
         if (pendingSoc !== null) {
           state = { ...state, socKwh: (pendingSoc / 100) * site.battery.capacityKwh };
+          // the old-rules twin starts from the same reading, so Compare stays fair
+          oldState = { ...oldState, socKwh: state.socKwh };
         }
         // the current hour's grid state is known for sure; the rest is forecast
         const ahead = [{ ...fcHours[hour], gridOn: week[hour * 4].gridOn }, ...fcHours.slice(hour + 1, hour + 24)];
@@ -121,11 +123,12 @@ export function useSiteWeek(site: Site, seed = 1) {
 
   // Sets a pending battery override from a scanned reading. The run loop
   // applies it at the start of the next simulated hour, before planning.
-  function useReading(socPct: number) {
+  // applies it at the start of the next simulated hour, before planning.
+  function applyReading(socPct: number) {
     pendingSocRef.current = socPct;
   }
 
-  return { snap, playing, setPlaying, error, useReading };
+  return { snap, playing, setPlaying, error, applyReading };
 }
 
 /** "Mon 14:00" for a given hour of the week. */

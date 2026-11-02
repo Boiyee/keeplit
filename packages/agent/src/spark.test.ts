@@ -71,6 +71,17 @@ test("opts.json sends a strict json_schema response_format", async () => {
   });
 });
 
+test("opts.reasoningEffort sends reasoning_effort only when set", async () => {
+  process.env.META_API_KEY = "test-key";
+  const schema = { type: "object" };
+  const withEffort = mockFetch(200, okBody("{}"));
+  await askSpark([{ role: "user", content: "hi" }], { json: schema, reasoningEffort: "low" });
+  assert.equal(sentJson(withEffort).reasoning_effort, "low");
+  const withoutEffort = mockFetch(200, okBody("{}"));
+  await askSpark([{ role: "user", content: "hi" }], { json: schema });
+  assert.ok(!("reasoning_effort" in sentJson(withoutEffort)));
+});
+
 test("array content with imagePart is sent through untouched", async () => {
   process.env.META_API_KEY = "test-key";
   const parts = [

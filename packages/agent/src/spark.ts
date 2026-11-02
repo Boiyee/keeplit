@@ -26,6 +26,7 @@ export type AskSparkOpts = {
   json?: object;
   base?: string;
   key?: string;
+  reasoningEffort?: string;
 };
 
 type ChatCompletionsResponse = {
@@ -72,6 +73,9 @@ export async function askSpark(messages: SparkMessage[], opts?: AskSparkOpts): P
         strict: true,
       },
     };
+  }
+  if (opts?.reasoningEffort !== undefined) {
+    body.reasoning_effort = opts.reasoningEffort;
   }
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",

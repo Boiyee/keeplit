@@ -12,7 +12,11 @@ const SYSTEM_PROMPT =
   "You read solar inverter and charge controller screens. " +
   "Report only what is visible on the screen. " +
   "Use null for any value that is not shown or is unreadable. " +
-  "Convert kW to W. Never guess.";
+  "Convert kW to W. Never guess. " +
+  "If the unit only has LED indicators and no digits, still report what the lights show: " +
+  "MAINS/GRID/AC light on means acInputOn true, off means false; " +
+  "BATTERY LOW light on means notes 'battery low' and confidence 'low'. " +
+  "Still never invent digits.";
 
 const QUESTION = "Read the screen in this photo and report each value shown.";
 
@@ -42,7 +46,7 @@ async function askForReading(dataUrl: string, extraText?: string): Promise<Readi
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content },
     ],
-    { json: READING_SCHEMA },
+    { json: READING_SCHEMA, reasoningEffort: "low" },
   );
   try {
     return JSON.parse(reply) as Reading;
