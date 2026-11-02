@@ -6,6 +6,6 @@
   "description": "",
   "license": "ISC",
   "scripts": {
-    "test": "node --experimental-strip-types --test src/spark.test.ts"
+    "test": "node --experimental-strip-types --test src/spark.test.ts src/validate.test.ts"
   }
 }
