@@ -3,6 +3,7 @@ import type { Answer } from "../../../packages/planner/src/whatif.ts";
 import type { Site } from "../../../packages/sim/src/types.ts";
 import type { AskRequest } from "./ask.worker.ts";
 import { reply, understand, type SiteContext } from "../../../packages/agent/src/agent.ts";
+import { browserTranscriber, speak, type Transcriber } from "./voice.ts";
 import { clock, type Snapshot } from "./useSiteWeek.ts";
 
 /** The clinic's appliances that people ask about. Later, these come from onboarding. */
@@ -25,6 +26,14 @@ interface Result {
 const forMinutes = (m: number) => (m < 60 ? `${m} min` : `${m / 60} h`);
 
 const OFFLINE_MSG = "I need internet to understand questions. Use the picker below — it works offline.";
+
+// Spoken-answer language codes for speechSynthesis.
+const VOICE_LANG: Record<string, string> = {
+  English: "en-NG",
+  "Nigerian Pidgin": "en-NG",
+  "Yorùbá": "yo-NG",
+  French: "fr-FR",
+};
 
 interface ChatMsg {
   from: "user" | "keeplit";
@@ -52,6 +61,10 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
   const [input, setInput] = useState("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [chatBusy, setChatBusy] = useState(false);
+  const [listening, setListening] = useState(false);
+  const [soundOn, setSoundOn] = useState(true);
+  const [micBlocked, setMicBlocked] = useState(false);
+  const [transcriber] = useState<Transcriber | null>(() => browserTranscriber());
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
 
@@ -61,6 +74,8 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
     });
     return () => worker.current?.terminate();
   }, []);
+
+  useEffect(() => () => transcriber?.stop(), [transcriber]);
 
   /** Runs one what-if through the planner worker; callers must not overlap. */
   function askPlanner(req: AskRequest): Promise<Answer> {
@@ -96,8 +111,8 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
     };
   }
 
-  async function send() {
-    const question = input.trim();
+  async function send(override?: string) {
+    const question = (override ?? input).trim();
     if (question === "" || chatBusy) return;
     setMessages((m) => [...m, { from: "user", text: question }]);
     setInput("");
@@ -122,12 +137,37 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
         planner = { verdict: answer.verdict, extraFuelL: answer.extraFuelL, lowestPct: answer.lowestPct };
       }
       const text = await reply(question, ctx, intent, facts, language);
+      if (soundOn) speak(text, VOICE_LANG[language] ?? "en-US");
       setMessages((m) => [...m, { from: "keeplit", text, planner }]);
     } catch {
       setMessages((m) => [...m, { from: "keeplit", text: OFFLINE_MSG }]);
     } finally {
       setChatBusy(false);
     }
+  }
+
+  function toggleMic() {
+    if (!transcriber) return;
+    if (listening) {
+      transcriber.stop();
+      setListening(false);
+      return;
+    }
+    setMicBlocked(false);
+    setListening(true);
+    transcriber.start(
+      (text, final) => {
+        setInput(text);
+        if (final) {
+          setListening(false);
+          void send(text);
+        }
+      },
+      (msg) => {
+        setListening(false);
+        if (msg === "not-allowed" || msg === "service-not-allowed") setMicBlocked(true);
+      },
+    );
   }
 
   function check() {
@@ -191,6 +231,7 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
           </div>
         )}
         {chatBusy && <p className="text-sm text-faint">Thinking…</p>}
+        {micBlocked && <p className="text-sm text-bad">Microphone blocked — type instead.</p>}
         <div className="flex gap-2">
           <input
             value={input}
@@ -202,6 +243,55 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
             aria-label="Ask KEEPLIT anything"
             className="h-12 px-3 border border-line-strong bg-ink text-text text-sm flex-1 min-w-0"
           />
+          {transcriber && (
+            <button
+              onClick={toggleMic}
+              aria-label={listening ? "Stop" : "Start talking"}
+              className={`h-12 w-12 shrink-0 border flex items-center justify-center ${
+                listening ? "bg-accent text-ink border-accent" : "border-line-strong text-text"
+              }`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="size-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0" />
+                <path d="M12 18v3" />
+              </svg>
+            </button>
+          )}
+          <button
+            onClick={() => setSoundOn(!soundOn)}
+            aria-label={soundOn ? "Mute spoken answers" : "Read answers aloud"}
+            aria-pressed={soundOn}
+            className={`h-12 w-12 shrink-0 border flex items-center justify-center ${
+              soundOn ? "bg-accent text-ink border-accent" : "border-line-strong text-faint"
+            }`}
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="size-5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden="true"
+            >
+              <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none" />
+              {soundOn ? (
+                <>
+                  <path d="M16 9a4 4 0 0 1 0 6" />
+                  <path d="M18.5 6.5a8 8 0 0 1 0 11" />
+                </>
+              ) : (
+                <path d="M16 9l6 6M22 9l-6 6" />
+              )}
+            </svg>
+          </button>
           <button
             onClick={() => void send()}
             disabled={chatBusy || busy || input.trim() === ""}
