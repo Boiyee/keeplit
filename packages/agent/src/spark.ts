@@ -1,11 +1,31 @@
+export type SparkTextPart = {
+  type: "text";
+  text: string;
+};
+
+export type SparkImagePart = {
+  type: "image_url";
+  image_url: {
+    url: string;
+  };
+};
+
+export type SparkPart = SparkTextPart | SparkImagePart;
+
 export type SparkMessage = {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | SparkPart[];
 };
+
+export function imagePart(dataUrl: string): SparkImagePart {
+  return { type: "image_url", image_url: { url: dataUrl } };
+}
 
 export type AskSparkOpts = {
   model?: string;
   json?: object;
+  base?: string;
+  key?: string;
 };
 
 type ChatCompletionsResponse = {
@@ -17,14 +37,28 @@ type ChatCompletionsResponse = {
 };
 
 const DEFAULT_BASE = "https://api.meta.ai/v1";
+const BROWSER_BASE = "/spark";
 const DEFAULT_MODEL = "muse-spark-1.3";
 
+// typeof guard keeps this file runnable in the browser, where `process` does not exist.
+function env(name: string): string | undefined {
+  if (typeof process === "undefined") return undefined;
+  return process.env[name];
+}
+
 export async function askSpark(messages: SparkMessage[], opts?: AskSparkOpts): Promise<string> {
-  const apiKey = process.env.META_API_KEY;
-  if (!apiKey) {
-    throw new Error("META_API_KEY is not set");
+  const isBrowser = typeof window !== "undefined";
+  const base = opts?.base ?? (isBrowser ? BROWSER_BASE : (env("META_API_BASE") ?? DEFAULT_BASE));
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+  };
+  if (!isBrowser) {
+    const apiKey = opts?.key ?? env("META_API_KEY");
+    if (!apiKey) {
+      throw new Error("META_API_KEY is not set");
+    }
+    headers.Authorization = `Bearer ${apiKey}`;
   }
-  const base = process.env.META_API_BASE ?? DEFAULT_BASE;
   const body: Record<string, unknown> = {
     model: opts?.model ?? DEFAULT_MODEL,
     messages,
@@ -41,10 +75,7 @@ export async function askSpark(messages: SparkMessage[], opts?: AskSparkOpts): P
   }
   const res = await fetch(`${base}/chat/completions`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
+    headers,
     body: JSON.stringify(body),
   });
   const responseBody = await res.text();

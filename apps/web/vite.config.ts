@@ -1,7 +1,26 @@
-import { defineConfig } from "vite";
+import { defineConfig, type ProxyOptions } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
+
+// Forwards Meta Model API calls from the browser without exposing the key:
+// the browser calls same-origin /spark, and this proxy attaches the
+// Authorization header from the server-side environment on every request.
+const sparkProxy: Record<string, ProxyOptions> = {
+  "/spark": {
+    target: process.env.META_API_BASE ?? "https://api.meta.ai/v1",
+    changeOrigin: true,
+    rewrite: (path) => path.replace(/^\/spark/, ""),
+    configure: (proxy) => {
+      proxy.on("proxyReq", (proxyReq) => {
+        const apiKey = process.env.META_API_KEY;
+        if (apiKey) {
+          proxyReq.setHeader("Authorization", `Bearer ${apiKey}`);
+        }
+      });
+    },
+  },
+};
 
 export default defineConfig({
   plugins: [
@@ -26,4 +45,6 @@ export default defineConfig({
     }),
   ],
   worker: { format: "es" },
+  server: { proxy: sparkProxy },
+  preview: { proxy: sparkProxy },
 });

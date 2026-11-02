@@ -4,5 +4,8 @@
   "private": true,
   "type": "module",
   "description": "",
-  "license": "ISC"
+  "license": "ISC",
+  "scripts": {
+    "test": "node --experimental-strip-types --test src/spark.test.ts"
+  }
 }
