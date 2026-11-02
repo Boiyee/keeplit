@@ -8,7 +8,7 @@ import { clock, useSiteWeek } from "./useSiteWeek.ts";
 type Tab = "live" | "plan" | "ask" | "compare";
 
 export default function App() {
-  const { snap, playing, setPlaying, error } = useSiteWeek(lagosClinic);
+  const { snap, playing, setPlaying, error, useReading } = useSiteWeek(lagosClinic);
   const [tab, setTab] = useState<Tab>("live");
 
   return (
@@ -37,7 +37,12 @@ export default function App() {
         <p className="text-faint mt-10">Planning the first hour…</p>
       )}
       {snap && tab === "live" && (
-        <Live s={snap} onPlan={() => setTab("plan")} />
+        <Live
+          s={snap}
+          onPlan={() => setTab("plan")}
+          site={lagosClinic}
+          onUseReading={useReading}
+        />
       )}
       {snap && tab === "plan" && <Plan s={snap} />}
       {snap && tab === "ask" && <AskScreen site={lagosClinic} s={snap} />}

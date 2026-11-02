@@ -1,5 +1,7 @@
 import { PowerFlow } from "./PowerFlow.tsx";
+import { ScanCard } from "./ScanCard.tsx";
 import { clock, type Snapshot } from "./useSiteWeek.ts";
+import type { Site } from "../../../packages/sim/src/types.ts";
 
 /** The plan made this hour, with each entry's clock hour and forecast attached. */
 const upcoming = (s: Snapshot) =>
@@ -26,7 +28,17 @@ function nextAction(s: Snapshot) {
   };
 }
 
-export function Live({ s, onPlan }: { s: Snapshot; onPlan: () => void }) {
+export function Live({
+  s,
+  onPlan,
+  site,
+  onUseReading,
+}: {
+  s: Snapshot;
+  onPlan: () => void;
+  site: Site;
+  onUseReading: (socPct: number) => void;
+}) {
   const loadKw = s.now.criticalKw + s.now.otherKw;
   const action = nextAction(s);
   const fridgeSafe = upcoming(s).every(
@@ -60,8 +72,15 @@ export function Live({ s, onPlan }: { s: Snapshot; onPlan: () => void }) {
         </button>
       </section>
 
+      <ScanCard site={site} onUseReading={onUseReading} />
+
       <div className="grid grid-cols-3 gap-2.5">
-        <Readout label="BATTERY" value={`${s.socPct.toFixed(0)}%`} accent />
+        <Readout
+          label="BATTERY"
+          value={`${s.socPct.toFixed(0)}%`}
+          accent
+          tag={s.batteryFrom === "scan" ? "FROM YOUR SCAN" : undefined}
+        />
         <Readout label="SOLAR" value={`${s.now.pvKw.toFixed(1)} kW`} />
         {s.genKw > 0 ? (
           <Readout label="GENERATOR" value={`${s.genKw.toFixed(1)} kW`} />
@@ -88,11 +107,13 @@ function Readout({
   value,
   accent,
   off,
+  tag,
 }: {
   label: string;
   value: string;
   accent?: boolean;
   off?: boolean;
+  tag?: string;
 }) {
   return (
     <div className="rounded-2xl border border-line bg-panel px-3.5 py-3">
@@ -105,6 +126,9 @@ function Readout({
         }
       >
         {value}
+        {tag && (
+          <span className="font-mono text-[10px] text-accent block mt-0.5">{tag}</span>
+        )}
       </p>
     </div>
   );

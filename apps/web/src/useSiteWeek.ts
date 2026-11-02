@@ -21,6 +21,7 @@ export interface Snapshot {
   ahead: Step[]; // the forecast that plan was made from
   solveMs: number;
   fridgeDownMin: number; // minutes the fridge lost power so far
+  batteryFrom: "sim" | "scan"; // "scan" for the hour that planned from a scanned reading
   old: { fuelL: number; fridgeDownMin: number; socPct: number }; // the same week under the old inverter rules
 }
 
@@ -43,6 +44,8 @@ export function useSiteWeek(site: Site, seed = 1) {
   const [playing, setPlaying] = useState(true);
   const [error, setError] = useState("");
     const playingRef = useRef(playing);
+    // A scanned battery % waiting to be applied at the start of the next hour.
+    const pendingSocRef = useRef<number | null>(null);
   useEffect(() => {
     playingRef.current = playing;
   }, [playing]);
@@ -67,6 +70,12 @@ export function useSiteWeek(site: Site, seed = 1) {
           continue;
         }
         const t0 = performance.now();
+        // a scanned reading overrides the simulated battery before planning
+        const pendingSoc = pendingSocRef.current;
+        pendingSocRef.current = null;
+        if (pendingSoc !== null) {
+          state = { ...state, socKwh: (pendingSoc / 100) * site.battery.capacityKwh };
+        }
         // the current hour's grid state is known for sure; the rest is forecast
         const ahead = [{ ...fcHours[hour], gridOn: week[hour * 4].gridOn }, ...fcHours.slice(hour + 1, hour + 24)];
         const result = await solver.solve({ site, state, hours: ahead });
@@ -84,6 +93,7 @@ export function useSiteWeek(site: Site, seed = 1) {
           ahead,
           solveMs,
           fridgeDownMin,
+          batteryFrom: pendingSoc !== null ? "scan" : "sim",
           old: { ...old, socPct: (100 * oldState.socKwh) / site.battery.capacityKwh },
         });
         for (let q = 0; q < 4; q++) {
@@ -109,7 +119,13 @@ export function useSiteWeek(site: Site, seed = 1) {
     };
   }, [site, seed]);
 
-  return { snap, playing, setPlaying, error };
+  // Sets a pending battery override from a scanned reading. The run loop
+  // applies it at the start of the next simulated hour, before planning.
+  function useReading(socPct: number) {
+    pendingSocRef.current = socPct;
+  }
+
+  return { snap, playing, setPlaying, error, useReading };
 }
 
 /** "Mon 14:00" for a given hour of the week. */
