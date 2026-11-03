@@ -50,6 +50,7 @@ export default defineConfig(({ mode }) => {
           icons: [{ src: "favicon.svg", sizes: "any", type: "image/svg+xml" }],
         },
         workbox: {
+          navigateFallbackDenylist: [/^\/spark/, /^\/api/],
           globPatterns: ["**/*.{js,css,html,svg,png,wasm,woff2}"],
           maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         },
