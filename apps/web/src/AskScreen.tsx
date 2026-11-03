@@ -139,8 +139,15 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
       const text = await reply(question, ctx, intent, facts, language);
       if (soundOn) speak(text, VOICE_LANG[language] ?? "en-US");
       setMessages((m) => [...m, { from: "keeplit", text, planner }]);
-    } catch {
-      setMessages((m) => [...m, { from: "keeplit", text: OFFLINE_MSG }]);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      setMessages((m) => [
+        ...m,
+        {
+          from: "keeplit",
+          text: navigator.onLine ? `Spark error: ${reason.slice(0, 120)}` : OFFLINE_MSG,
+        },
+      ]);
     } finally {
       setChatBusy(false);
     }

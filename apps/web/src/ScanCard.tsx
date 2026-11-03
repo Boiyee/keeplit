@@ -40,10 +40,12 @@ export function ScanCard({ site, onUseReading }: { site: Site; onUseReading: (so
   const [photo, setPhoto] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<ScreenResult | null>(null);
+  const [scanError, setScanError] = useState("");
 
-  // Never throws: every failure lands on the offline message, never a crashed screen.
+  // Never throws: every failure lands in the failed phase, never a crashed screen.
   async function scan(file: File) {
     try {
+      setScanError("");
       const dataUrl = await downscale(file);
       setPhoto(dataUrl);
       if (!navigator.onLine) {
@@ -53,7 +55,8 @@ export function ScanCard({ site, onUseReading }: { site: Site; onUseReading: (so
       setPhase("reading");
       setResult(await readScreen(dataUrl, { pvMaxW: site.pvKwp * 1250 }));
       setPhase("done");
-    } catch {
+    } catch (err) {
+      setScanError(err instanceof Error ? err.message : String(err));
       setPhase("failed");
     }
   }
@@ -92,7 +95,9 @@ export function ScanCard({ site, onUseReading }: { site: Site; onUseReading: (so
       )}
       {phase === "failed" && (
         <p className="rounded-2xl border border-line bg-panel px-4 py-3 text-sm text-muted">
-          Scanning needs internet. Everything else keeps working offline.
+          {navigator.onLine && scanError !== ""
+            ? `Spark error: ${scanError.slice(0, 120)}`
+            : "Scanning needs internet. Everything else keeps working offline."}
         </p>
       )}
       {phase === "done" && result && (
