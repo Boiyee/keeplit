@@ -50,7 +50,6 @@ Where it doesn't help: on a village site with no grid and a generator that has t
  
 Built by Jubreel Oduwale (400L Mechanical Engineering, FUNAAB) for the Meta Global AI Developer Hackathon.
  
-<!-- CREDIT LINE: waiting for Dokun's confirmation of the wording -->
 The simulator, planner and first screens were developed with guidance from his brother Dokun and Claude. From Nov 1, the Meta AI features (screen reading with the physics check, the agent, voice, deployment) were written with **Muse Code**, from prompts in the repo, reviewed and tested by Jubreel. Every Muse task, prompt, result and hand fix is in [docs/muse-log.md](docs/muse-log.md). Muse also wrote test suites for the Spark client, the physics check and the agent without being asked.
  
 ## Run it
