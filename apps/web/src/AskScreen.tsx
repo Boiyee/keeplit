@@ -266,24 +266,96 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
         )}
         {chatBusy && <p className="text-sm text-faint">Thinking…</p>}
         {micBlocked && <p className="text-sm text-bad">Microphone blocked — type instead.</p>}
-        <div className="flex gap-2">
-          <input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void send();
-            }}
-            placeholder="Ask KEEPLIT anything"
-            aria-label="Ask KEEPLIT anything"
-            className="h-12 px-3 border border-line-strong bg-ink text-text text-sm flex-1 min-w-0"
-          />
-          {transcriber && (
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between h-9">
+            <div className="flex items-center gap-2 min-w-0">
+              {transcriber && (
+                <>
+                  <span className="font-mono text-[10.5px] tracking-[0.1em] text-faint shrink-0">
+                    VOICE
+                  </span>
+                  <select
+                    value={voiceLang}
+                    onChange={(e) => pickVoiceLang(e.target.value)}
+                    aria-label="Voice language"
+                    className="h-9 px-2 border border-line-strong bg-ink text-text text-sm min-w-0 max-w-36"
+                  >
+                    {LANGUAGES.map((l) => (
+                      <option key={l.name} value={l.name}>
+                        {l.name}
+                      </option>
+                    ))}
+                  </select>
+                </>
+              )}
+            </div>
             <button
-              onClick={toggleMic}
-              aria-label={listening ? "Stop" : "Start talking"}
-              className={`h-12 w-12 shrink-0 border flex items-center justify-center ${
-                listening ? "bg-accent text-ink border-accent" : "border-line-strong text-text"
+              onClick={() => setSoundOn(!soundOn)}
+              aria-label={soundOn ? "Mute spoken answers" : "Read answers aloud"}
+              aria-pressed={soundOn}
+              className={`flex items-center gap-1.5 shrink-0 font-mono text-[10.5px] tracking-[0.1em] ${
+                soundOn ? "text-accent" : "text-faint"
               }`}
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className="size-4"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                aria-hidden="true"
+              >
+                <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none" />
+                {soundOn ? (
+                  <>
+                    <path d="M16 9a4 4 0 0 1 0 6" />
+                    <path d="M18.5 6.5a8 8 0 0 1 0 11" />
+                  </>
+                ) : (
+                  <path d="M16 9l6 6M22 9l-6 6" />
+                )}
+              </svg>
+              READ ALOUD
+            </button>
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void send();
+              }}
+              placeholder="Ask KEEPLIT anything"
+              aria-label="Ask KEEPLIT anything"
+              className="h-12 px-3 border border-line-strong bg-ink text-text text-sm flex-1 min-w-0"
+            />
+            {transcriber && (
+              <button
+                onClick={toggleMic}
+                aria-label={listening ? "Stop" : "Start talking"}
+                className={`h-12 w-12 shrink-0 border flex items-center justify-center ${
+                  listening ? "bg-accent text-ink border-accent" : "border-line-strong text-text"
+                }`}
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden="true"
+                >
+                  <rect x="9" y="3" width="6" height="11" rx="3" />
+                  <path d="M5 11a7 7 0 0 0 14 0" />
+                  <path d="M12 18v3" />
+                </svg>
+              </button>
+            )}
+            <button
+              onClick={() => void send()}
+              disabled={chatBusy || busy || input.trim() === ""}
+              aria-label="Send"
+              className="h-12 w-12 shrink-0 bg-accent text-ink flex items-center justify-center disabled:opacity-60"
             >
               <svg
                 viewBox="0 0 24 24"
@@ -293,63 +365,10 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
                 strokeWidth="2"
                 aria-hidden="true"
               >
-                <rect x="9" y="3" width="6" height="11" rx="3" />
-                <path d="M5 11a7 7 0 0 0 14 0" />
-                <path d="M12 18v3" />
+                <path d="M5 12h14M13 6l6 6-6 6" />
               </svg>
             </button>
-          )}
-          {transcriber && (
-            <label className="flex flex-col gap-1 font-mono text-[10.5px] text-faint">
-              VOICE LANGUAGE
-              <select
-                value={voiceLang}
-                onChange={(e) => pickVoiceLang(e.target.value)}
-                aria-label="Voice language"
-                className="h-12 px-2 border border-line-strong bg-ink text-text text-sm max-w-28"
-              >
-                {LANGUAGES.map((l) => (
-                  <option key={l.name} value={l.name}>
-                    {l.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-          <button
-            onClick={() => setSoundOn(!soundOn)}
-            aria-label={soundOn ? "Mute spoken answers" : "Read answers aloud"}
-            aria-pressed={soundOn}
-            className={`h-12 w-12 shrink-0 border flex items-center justify-center ${
-              soundOn ? "bg-accent text-ink border-accent" : "border-line-strong text-faint"
-            }`}
-          >
-            <svg
-              viewBox="0 0 24 24"
-              className="size-5"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden="true"
-            >
-              <path d="M4 9v6h4l5 4V5L8 9H4z" fill="currentColor" stroke="none" />
-              {soundOn ? (
-                <>
-                  <path d="M16 9a4 4 0 0 1 0 6" />
-                  <path d="M18.5 6.5a8 8 0 0 1 0 11" />
-                </>
-              ) : (
-                <path d="M16 9l6 6M22 9l-6 6" />
-              )}
-            </svg>
-          </button>
-          <button
-            onClick={() => void send()}
-            disabled={chatBusy || busy || input.trim() === ""}
-            className="h-12 px-5 bg-accent text-ink font-semibold disabled:opacity-60"
-          >
-            Send
-          </button>
+          </div>
         </div>
       </section>
 
