@@ -139,3 +139,16 @@ test("a response without content throws", async () => {
   mockFetch(200, JSON.stringify({ choices: [] }));
   await assert.rejects(askSpark([{ role: "user", content: "hi" }]), /missing content/);
 });
+
+test("a thrown fetch is retried once after 800 ms", async () => {
+  process.env.META_API_KEY = "test-key";
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls += 1;
+    if (calls === 1) throw new Error("fetch failed");
+    return new Response(okBody("back"), { status: 200 });
+  }) as typeof fetch;
+  const reply = await askSpark([{ role: "user", content: "hi" }]);
+  assert.equal(reply, "back");
+  assert.equal(calls, 2);
+});

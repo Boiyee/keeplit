@@ -39,8 +39,21 @@ const questions = [
   "水のポンプを1時間使ってもいいですか？",
 ];
 
-for (const question of questions) {
-  const { intent, language } = await understand(question, ctx);
-  console.log(`Q: ${question}`);
-  console.log(`  intent: ${JSON.stringify(intent)} language: ${language}`);
+// The run-the-appliance questions: the first three (water pump, air conditioner,
+// air conditioner in Yorùbá) plus the thirteen water-pump translations at the end.
+const isApplianceQuestion = (i: number) => i < 3 || i >= questions.length - 13;
+
+let correct = 0;
+for (const [i, question] of questions.entries()) {
+  try {
+    const { intent, language, raw } = await understand(question, ctx);
+    console.log(`Q: ${question}`);
+    console.log(`  intent: ${JSON.stringify(intent)} language: ${language}`);
+    console.log(`  raw: kind=${JSON.stringify(raw.kind)} appliance=${JSON.stringify(raw.appliance)}`);
+    if (isApplianceQuestion(i) && intent.kind === "what_if") correct += 1;
+  } catch (err) {
+    console.log(`Q: ${question}`);
+    console.log(`  error: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
+console.log(`what_if correct: ${correct}/16`);

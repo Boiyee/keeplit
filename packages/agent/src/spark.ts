@@ -77,11 +77,22 @@ export async function askSpark(messages: SparkMessage[], opts?: AskSparkOpts): P
   if (opts?.reasoningEffort !== undefined) {
     body.reasoning_effort = opts.reasoningEffort;
   }
-  const res = await fetch(`${base}/chat/completions`, {
+  const url = `${base}/chat/completions`;
+  const init: RequestInit = {
     method: "POST",
     headers,
     body: JSON.stringify(body),
-  });
+  };
+  let res: Response;
+  try {
+    res = await fetch(url, init);
+  } catch {
+    // The request never reached the server (ECONNRESET, "fetch failed", ...):
+    // wait 800 ms and retry once with the same request. HTTP error
+    // responses are returned, never retried.
+    await new Promise((r) => setTimeout(r, 800));
+    res = await fetch(url, init);
+  }
   const responseBody = await res.text();
   if (!res.ok) {
     throw new Error(`Meta API request failed with status ${res.status}: ${responseBody}`);

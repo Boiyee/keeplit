@@ -21,28 +21,31 @@ export type Intent =
 const UNDERSTAND_SYSTEM =
   "You classify a user's question about their solar power site. " +
   "Return kind 'what_if' when they ask to run, use or switch on an appliance or device. " +
-  "Match the appliance to the site list when possible (case-insensitive; AC means air conditioner, freezer means fridge if listed). " +
-  "Otherwise use the power in kW the user states. " +
+  "appliance must be exactly one of the names in the site list, whatever language " +
+  "the question is in, or null if the item is not in the list. Set kw only when the user states a power; otherwise null. " +
   "If no power is known, use kind 'other'. " +
   "Minutes is the stated duration (an hour is 60); default 30. " +
   "Return kind 'status' for battery or current-power questions, " +
   "'plan' for tonight, tomorrow or generator-schedule questions, 'other' for the rest. " +
   "Language is the language the user wrote in, e.g. English, Nigerian Pidgin, Yorùbá, French.";
 
-const UNDERSTAND_SCHEMA = {
-  type: "object",
-  properties: {
-    kind: { type: "string", enum: ["what_if", "status", "plan", "other"] },
-    appliance: { type: ["string", "null"] },
-    kw: { type: ["number", "null"] },
-    minutes: { type: ["number", "null"] },
-    language: { type: "string" },
-  },
-  required: ["kind", "appliance", "kw", "minutes", "language"],
-  additionalProperties: false,
-};
+/** Built per call from ctx, so Spark can only return an exact site-list name or null. */
+function understandSchema(ctx: SiteContext): object {
+  return {
+    type: "object",
+    properties: {
+      kind: { type: "string", enum: ["what_if", "status", "plan", "other"] },
+      appliance: { type: ["string", "null"], enum: [...ctx.appliances.map((a) => a.name), null] },
+      kw: { type: ["number", "null"] },
+      minutes: { type: ["number", "null"] },
+      language: { type: "string" },
+    },
+    required: ["kind", "appliance", "kw", "minutes", "language"],
+    additionalProperties: false,
+  };
+}
 
-interface RawIntent {
+export interface RawIntent {
   kind?: unknown;
   appliance?: unknown;
   kw?: unknown;
@@ -50,15 +53,18 @@ interface RawIntent {
   language?: unknown;
 }
 
-function toIntent(raw: RawIntent): Intent {
-  if (
-    raw.kind === "what_if" &&
-    typeof raw.appliance === "string" &&
-    typeof raw.kw === "number" &&
-    raw.kw > 0
-  ) {
-    const minutes = typeof raw.minutes === "number" && raw.minutes > 0 ? raw.minutes : 30;
-    return { kind: "what_if", appliance: raw.appliance, kw: raw.kw, minutes };
+function toIntent(raw: RawIntent, ctx: SiteContext): Intent {
+  const minutes = typeof raw.minutes === "number" && raw.minutes > 0 ? raw.minutes : 30;
+  const listed =
+    typeof raw.appliance === "string"
+      ? ctx.appliances.find((a) => a.name === raw.appliance)
+      : undefined;
+  if (listed && (raw.kind === "what_if" || raw.kind === "other")) {
+    return { kind: "what_if", appliance: listed.name, kw: listed.kw, minutes };
+  }
+  if (raw.kind === "what_if" && typeof raw.kw === "number" && raw.kw > 0) {
+    const appliance = typeof raw.appliance === "string" ? raw.appliance : "your appliance";
+    return { kind: "what_if", appliance, kw: raw.kw, minutes };
   }
   if (raw.kind === "status") return { kind: "status" };
   if (raw.kind === "plan") return { kind: "plan" };
@@ -66,7 +72,11 @@ function toIntent(raw: RawIntent): Intent {
 }
 
 // Classifies a question. Uses askSpark only, so it works in Node and the browser.
-export async function understand(question: string, ctx: SiteContext): Promise<{ intent: Intent; language: string }> {
+// `raw` is what Spark returned, before toIntent maps it onto the site list.
+export async function understand(
+  question: string,
+  ctx: SiteContext,
+): Promise<{ intent: Intent; language: string; raw: RawIntent }> {
   const appliances = ctx.appliances.map((a) => `${a.name} (${a.kw} kW)`).join(", ");
   const reply = await askSpark(
     [
@@ -76,7 +86,7 @@ export async function understand(question: string, ctx: SiteContext): Promise<{ 
         content: `Site: ${ctx.siteName}. Appliances on site: ${appliances}. Question: ${question}`,
       },
     ],
-    { json: UNDERSTAND_SCHEMA, reasoningEffort: "low" },
+    { json: understandSchema(ctx), reasoningEffort: "medium" },
   );
   let raw: RawIntent;
   try {
@@ -85,7 +95,7 @@ export async function understand(question: string, ctx: SiteContext): Promise<{ 
     throw new Error(`Spark did not return valid intent JSON: ${reply.slice(0, 200)}`);
   }
   const language = typeof raw.language === "string" && raw.language !== "" ? raw.language : "English";
-  return { intent: toIntent(raw), language };
+  return { intent: toIntent(raw, ctx), language, raw };
 }
 
 const REPLY_SYSTEM =

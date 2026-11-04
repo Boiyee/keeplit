@@ -48,7 +48,7 @@ test("understand matches an appliance and defaults minutes to 30", async () => {
   const schema = (calls[0].response_format as { json_schema: { schema: Record<string, unknown> } }).json_schema.schema;
   assert.deepEqual(schema.required, ["kind", "appliance", "kw", "minutes", "language"]);
   assert.equal(schema.additionalProperties, false);
-  assert.equal(calls[0].reasoning_effort, "low");
+  assert.equal(calls[0].reasoning_effort, "medium");
 });
 
 test("understand falls back to other when no power is known", async () => {
@@ -80,4 +80,46 @@ test("reply returns the model's text and sends context, intent and facts", async
   const userText = (sent.messages as Array<{ content: string }>)[1].content;
   assert.ok(userText.includes("64"));
   assert.ok((sent.messages as Array<{ content: string }>)[0].content.includes("English"));
+});
+
+test("understand takes kw from the site list for a listed appliance", async () => {
+  process.env.META_API_KEY = "test-key";
+  mockReplies([
+    JSON.stringify({ kind: "what_if", appliance: "Water pump", kw: 2.5, minutes: 60, language: "French" }),
+  ]);
+  const { intent } = await understand("Je peux allumer la pompe à eau pendant une heure ?", ctx);
+  assert.deepEqual(intent, { kind: "what_if", appliance: "Water pump", kw: 0.75, minutes: 60 });
+});
+
+test("understand schema restricts appliance to the site list", async () => {
+  process.env.META_API_KEY = "test-key";
+  const calls = mockReplies([
+    JSON.stringify({ kind: "status", appliance: null, kw: null, minutes: null, language: "English" }),
+  ]);
+  await understand("How much battery?", ctx);
+  const schema = (
+    calls[0].response_format as { json_schema: { schema: { properties: { appliance: unknown } } } }
+  ).json_schema.schema;
+  assert.deepEqual(schema.properties.appliance, {
+    type: ["string", "null"],
+    enum: ["Water pump", "Air conditioner", null],
+  });
+});
+
+test("understand uses a stated kW for an unlisted appliance", async () => {
+  process.env.META_API_KEY = "test-key";
+  mockReplies([
+    JSON.stringify({ kind: "what_if", appliance: null, kw: 1.2, minutes: null, language: "English" }),
+  ]);
+  const { intent } = await understand("Can I run a 1.2 kW iron?", ctx);
+  assert.deepEqual(intent, { kind: "what_if", appliance: "your appliance", kw: 1.2, minutes: 30 });
+});
+
+test('kind "other" with a listed appliance becomes what_if', async () => {
+  process.env.META_API_KEY = "test-key";
+  mockReplies([
+    JSON.stringify({ kind: "other", appliance: "Air conditioner", kw: null, minutes: null, language: "English" }),
+  ]);
+  const { intent } = await understand("It's hot in here", ctx);
+  assert.deepEqual(intent, { kind: "what_if", appliance: "Air conditioner", kw: 1.2, minutes: 30 });
 });
