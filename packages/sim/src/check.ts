@@ -5,7 +5,7 @@ const site: Site = {
   name: "test",
   battery: { capacityKwh: 10, etaCharge: 0.92, etaDischarge: 0.92, maxChargeKw: 3, maxDischargeKw: 4, reservePct: 30 },
   pvKwp: 3.6,
-  generator: { maxKw: 4, minKw: 1.2, litresPerKwh: 0.3, idleLitresPerHour: 0.4, fuelPricePerLitre: 1000 },
+  generator: { maxKw: 4, minKw: 1.2, litresPerKwh: 0.3, idleLitresPerHour: 0.4, fuelPricePerLitre: 1000, currency: "₦" },
   hasGrid: true,
 };
 

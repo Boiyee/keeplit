@@ -3,13 +3,15 @@ import type { Site } from "../../../packages/sim/src/types.ts";
 import results from "./results.json";
 import { clock, type Snapshot } from "./useSiteWeek.ts";
 
-const naira = (n: number) => `₦${Math.round(n).toLocaleString("en-NG")}`;
+const localeFor = (symbol: string) => (symbol === "₱" ? "en-PH" : "en-NG");
 const pct = (old: number, keep: number) =>
   old > 0 ? Math.round((100 * (old - keep)) / old) : 0;
 
 /** Old inverter rules vs KEEPLIT: the week playing now, then the averages over several simulated weeks. */
 export function CompareScreen({ site, s }: { site: Site; s: Snapshot }) {
   const [price, setPrice] = useState(site.generator?.fuelPricePerLitre ?? 1000);
+  const symbol = site.generator?.currency ?? "₦";
+  const money = (n: number) => `${symbol}${Math.round(n).toLocaleString(localeFor(symbol))}`;
   const savedL = s.old.fuelL - s.fuelL;
   const tested = results.find((r) => r.site === site.name);
   const max = Math.max(s.old.fuelL, s.fuelL, 0.1);
@@ -37,10 +39,10 @@ export function CompareScreen({ site, s }: { site: Site; s: Snapshot }) {
           color="bg-accent"
         />
         <p className="font-display font-extrabold text-2xl leading-tight tracking-tight">
-          {savedL > 0.05 ? (
+          {savedL > 0.05 && site.generator ? (
             <>
               Saved <span className="text-accent">{savedL.toFixed(1)} L</span> ·{" "}
-              {naira(savedL * price)}
+              {money(savedL * price)}
             </>
           ) : savedL < -0.05 ? (
             <>
@@ -97,16 +99,17 @@ export function CompareScreen({ site, s }: { site: Site; s: Snapshot }) {
             old={tested.oldRules.shedKwh}
             keep={tested.keeplit.shedKwh}
           />
+          {site.generator && (
           <p className="border-t border-line pt-3 text-sm text-muted">
             That's about{" "}
             <b className="text-accent">
-              {naira(
+              {money(
                 (tested.oldRules.fuelL - tested.keeplit.fuelL) * 52 * price,
               )}
             </b>{" "}
             a year at
             <label className="inline-flex items-center gap-1 mx-1">
-              <span className="sr-only">Fuel price in naira per litre</span>₦
+              <span className="sr-only">Fuel price per litre</span>{symbol}
               <input
                 type="number"
                 min={0}
@@ -118,6 +121,12 @@ export function CompareScreen({ site, s }: { site: Site; s: Snapshot }) {
             </label>
             per litre.
           </p>
+          )}
+          {tested.keeplit.fuelL > tested.oldRules.fuelL && (
+            <p className="text-sm text-faint">
+              No saving here: with no grid to wait for, the generator has to run most evenings anyway. KEEPLIT pays off where the grid or sun comes back.
+            </p>
+          )}
         </section>
       )}
 

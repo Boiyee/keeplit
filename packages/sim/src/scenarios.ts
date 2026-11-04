@@ -22,7 +22,7 @@ export const lagosClinic: Site = {
   name: "Lagos clinic",
   battery: { capacityKwh: 7.2, etaCharge: 0.92, etaDischarge: 0.92, maxChargeKw: 2.5, maxDischargeKw: 4, reservePct: 30 },
   pvKwp: 3.6,
-  generator: { maxKw: 4, minKw: 1.2, litresPerKwh: 0.3, idleLitresPerHour: 0.4, fuelPricePerLitre: 1000 },
+  generator: { maxKw: 4, minKw: 1.2, litresPerKwh: 0.3, idleLitresPerHour: 0.4, fuelPricePerLitre: 1000, currency: "₦" },
   hasGrid: true,
 };
 
@@ -30,7 +30,7 @@ export const palawanVillage: Site = {
   name: "Palawan village",
   battery: { capacityKwh: 7, etaCharge: 0.96, etaDischarge: 0.96, maxChargeKw: 3, maxDischargeKw: 3, reservePct: 15 },
   pvKwp: 2.5,
-  generator: { maxKw: 3, minKw: 0.9, litresPerKwh: 0.28, idleLitresPerHour: 0.3, fuelPricePerLitre: 70 },
+  generator: { maxKw: 3, minKw: 0.9, litresPerKwh: 0.28, idleLitresPerHour: 0.3, fuelPricePerLitre: 70, currency: "₱" },
   hasGrid: false,
 };
 

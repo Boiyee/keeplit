@@ -5,7 +5,7 @@ export interface Site {
   name: string;
   battery: { capacityKwh: number; etaCharge: number; etaDischarge: number; maxChargeKw: number; maxDischargeKw: number; reservePct: number };
   pvKwp: number;
-  generator: { maxKw: number; minKw: number; litresPerKwh: number; idleLitresPerHour: number; fuelPricePerLitre: number } | null;
+  generator: { maxKw: number; minKw: number; litresPerKwh: number; idleLitresPerHour: number; fuelPricePerLitre: number; currency: string } | null;
   hasGrid: boolean;
 }
 
