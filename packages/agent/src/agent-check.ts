@@ -24,6 +24,19 @@ const questions = [
   "How much battery do I have?",
   "What's the plan tonight?",
   "Can I iron clothes?",
+  "Je peux allumer la pompe à eau pendant une heure ?",
+  "Naweza kuwasha pampu ya maji kwa saa moja?",
+  "Zan iya kunna famfon ruwa na awa daya?",
+  "هل يمكنني تشغيل مضخة الماء لمدة ساعة؟",
+  "Posso ligar a bomba de água por uma hora?",
+  "¿Puedo encender la bomba de agua una hora?",
+  "क्या मैं एक घंटे के लिए पानी का पंप चला सकता हूँ?",
+  "আমি কি এক ঘণ্টার জন্য পানির পাম্প চালাতে পারি?",
+  "Puwede ko bang buksan ang water pump nang isang oras?",
+  "Bolehkah saya menyalakan pompa air selama satu jam?",
+  "我可以开水泵一个小时吗？",
+  "물 펌프를 한 시간 동안 켜도 될까요?",
+  "水のポンプを1時間使ってもいいですか？",
 ];
 
 for (const question of questions) {

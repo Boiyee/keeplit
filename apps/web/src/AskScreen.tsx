@@ -4,6 +4,7 @@ import type { Site } from "../../../packages/sim/src/types.ts";
 import type { AskRequest } from "./ask.worker.ts";
 import { reply, understand, type SiteContext } from "../../../packages/agent/src/agent.ts";
 import { browserTranscriber, speak, type Transcriber } from "./voice.ts";
+import { LANGUAGES, codeFor } from "./languages.ts";
 import { clock, type Snapshot } from "./useSiteWeek.ts";
 
 /** The clinic's appliances that people ask about. Later, these come from onboarding. */
@@ -27,13 +28,18 @@ const forMinutes = (m: number) => (m < 60 ? `${m} min` : `${m / 60} h`);
 
 const OFFLINE_MSG = "I need internet to understand questions. Use the picker below — it works offline.";
 
-// Spoken-answer language codes for speechSynthesis.
-const VOICE_LANG: Record<string, string> = {
-  English: "en-NG",
-  "Nigerian Pidgin": "en-NG",
-  "Yorùbá": "yo-NG",
-  French: "fr-FR",
-};
+const VOICE_LANG_KEY = "keeplit.voiceLang";
+
+/** Voice language saved earlier, or English when nothing valid was saved. */
+function loadVoiceLang(): string {
+  try {
+    const saved = localStorage.getItem(VOICE_LANG_KEY);
+    if (saved && LANGUAGES.some((l) => l.name === saved)) return saved;
+  } catch {
+    // Storage unavailable (private mode, blocked cookies); fall back to English.
+  }
+  return "English";
+}
 
 interface ChatMsg {
   from: "user" | "keeplit";
@@ -64,7 +70,10 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
   const [listening, setListening] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [micBlocked, setMicBlocked] = useState(false);
-  const [transcriber] = useState<Transcriber | null>(() => browserTranscriber());
+  const [voiceLang, setVoiceLang] = useState<string>(loadVoiceLang);
+  const [transcriber, setTranscriber] = useState<Transcriber | null>(() =>
+    browserTranscriber(codeFor(voiceLang)),
+  );
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState("");
 
@@ -137,7 +146,13 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
         planner = { verdict: answer.verdict, extraFuelL: answer.extraFuelL, lowestPct: answer.lowestPct };
       }
       const text = await reply(question, ctx, intent, facts, language);
-      if (soundOn) speak(text, VOICE_LANG[language] ?? "en-US");
+      if (soundOn) {
+        try {
+          speak(text, codeFor(language));
+        } catch {
+          // No voice for this language, or speech blocked: the written answer below still stands.
+        }
+      }
       setMessages((m) => [...m, { from: "keeplit", text, planner }]);
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
@@ -151,6 +166,18 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
     } finally {
       setChatBusy(false);
     }
+  }
+
+  function pickVoiceLang(next: string) {
+    setVoiceLang(next);
+    try {
+      localStorage.setItem(VOICE_LANG_KEY, next);
+    } catch {
+      // Storage unavailable; the choice just won't persist.
+    }
+    transcriber?.stop();
+    setListening(false);
+    setTranscriber(browserTranscriber(codeFor(next)));
   }
 
   function toggleMic() {
@@ -271,6 +298,23 @@ export function AskScreen({ site, s }: { site: Site; s: Snapshot }) {
                 <path d="M12 18v3" />
               </svg>
             </button>
+          )}
+          {transcriber && (
+            <label className="flex flex-col gap-1 font-mono text-[10.5px] text-faint">
+              VOICE LANGUAGE
+              <select
+                value={voiceLang}
+                onChange={(e) => pickVoiceLang(e.target.value)}
+                aria-label="Voice language"
+                className="h-12 px-2 border border-line-strong bg-ink text-text text-sm max-w-28"
+              >
+                {LANGUAGES.map((l) => (
+                  <option key={l.name} value={l.name}>
+                    {l.name}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           <button
             onClick={() => setSoundOn(!soundOn)}
